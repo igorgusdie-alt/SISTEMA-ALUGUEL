@@ -49,11 +49,10 @@ dialog::backdrop{background:#0007}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;display:none}
 /* recibo */
 dialog.rc{width:min(720px,96vw)}
-.recibo{font-family:Newsreader,serif;font-size:17px;line-height:1.7;border:2px solid var(--ink);padding:28px 32px}
-.recibo h2{text-align:center;margin:0 0 4px;font-size:30px;letter-spacing:.04em}
-.recibo .top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--ink);padding-bottom:8px;margin-bottom:16px}
-.recibo .top b{font-size:22px}
-.sign{margin-top:48px;text-align:center}.sign div{border-top:1px solid var(--ink);width:70%;margin:0 auto;padding-top:4px}
+.recibo{font-family:Newsreader,serif;font-size:17px;line-height:1.7;padding:24px 30px;color:#000;background:#fff}
+.recibo h2{text-align:center;margin:0 0 22px;font-size:24px;letter-spacing:.02em}
+.recibo p{margin:0 0 14px;text-align:justify}
+.recibo .ass{margin-top:46px}
 @media print{body *{visibility:hidden}#rcBox,#rcBox *{visibility:visible}#rcBox{position:absolute;left:0;top:0;width:100%}dialog{box-shadow:none}}
 @media(max-width:560px){.fg{grid-template-columns:1fr}}
 </style>
@@ -275,15 +274,20 @@ async function excluir(tab,id){if(!confirm('Excluir definitivamente? Cobranças 
 async function recibo(id){
   if(!S.pagamentos.find(x=>x.id===id&&x.data_pagamento)) await carregar();
   const p=S.pagamentos.find(x=>x.id===id),i=inq(p.inquilino_id),m=imo(i.imovel_id);
+  const [cy,cm]=p.competencia.split('-');
+  const mesRef=MESES[+cm-1][0].toUpperCase()+MESES[+cm-1].slice(1)+'/'+cy;
+  const ext=extenso(Number(p.valor)),extC=ext[0].toUpperCase()+ext.slice(1);
+  const doc=v=>v?`inscrito(a) no CPF sob nº ${esc(v)}`:'';
   const d=$('#dlg');d.className='rc';
-  const [y,mo,dd]=p.data_pagamento.split('-');
   d.innerHTML=`<div id="rcBox"><div class="recibo">
-    <div class="top"><h2 style="margin:0">RECIBO</h2><span>Nº ${String(p.numero_recibo).padStart(5,'0')}</span></div>
-    <div class="top"><span>Valor</span><b>${brl(p.valor)}</b></div>
-    <p>Recebi de <b>${esc(i.nome)}</b>${i.cpf?`, CPF ${esc(i.cpf)}`:''}, a importância de <b>${extenso(Number(p.valor))}</b>, referente ao aluguel de <b>${comp(p.competencia)}</b>, do imóvel situado em ${esc(m.endereco||'—')}${m.cidade?', '+esc(m.cidade):''}${m.nome?' ('+esc(m.nome)+')':''}, com vencimento em ${fd(p.vencimento)}.</p>
-    <p>Pagamento efetuado em ${fd(p.data_pagamento)}${p.forma?' via '+esc(p.forma):''}. Dou plena e geral quitação do valor acima.</p>
-    <p style="text-align:right">${esc(m.cidade||'')}${m.cidade?', ':''}${+dd} de ${MESES[+mo-1]} de ${y}.</p>
-    <div class="sign"><div>${esc(m.proprietario||'Locador')}${m.proprietario_doc?'<br>CPF '+esc(m.proprietario_doc):''}</div></div>
+    <h2>RECIBO DE PAGAMENTO DE ALUGUEL</h2>
+    <p><b>Valor recebido: ${brl(p.valor)} (${extC}).</b></p>
+    <p>Eu, <b>${esc(m.proprietario||'—')}</b>, ${doc(m.proprietario_doc)}, na qualidade de locador(a), declaro ter recebido de <b>${esc(i.nome)}</b>, ${doc(i.cpf)}, a quantia de ${brl(p.valor)}, referente ao pagamento do aluguel do imóvel situado à ${esc(m.endereco||'—')}.</p>
+    <p>Referente ao mês de: <b>${mesRef}</b>.</p>
+    <p>Data do pagamento: <b>${fd(p.data_pagamento)}</b>.</p>
+    <p>O presente recibo comprova o recebimento do valor acima descrito, dando quitação exclusivamente quanto à parcela de aluguel identificada neste documento, não abrangendo eventuais encargos, multas, juros ou outros valores não expressamente mencionados.</p>
+    <p>Local e data: ${esc(m.cidade||'')}${m.cidade?', ':''}${fd(p.data_pagamento)}</p>
+    <p class="ass">Assinatura do(a) locador(a): ______________________________</p>
   </div></div>
   <div class="acts"><button class="b g" onclick="$('#dlg').close()">Fechar</button><button class="b" onclick="window.print()">Imprimir / salvar PDF</button></div>`;
   d.showModal();
