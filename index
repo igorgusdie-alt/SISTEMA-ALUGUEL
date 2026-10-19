@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controle de Aluguel</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&family=Newsreader:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#1b2733;--mut:#66758a;--line:#d9dfe6;--ac:#0f6b6b;--ac2:#e3f1f0;--ok:#2d7a45;--warn:#b7791f;--bad:#b3382c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Manrope,system-ui,sans-serif}
+header{background:var(--ink);color:#fff;padding:14px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+header h1{font:600 20px Newsreader,serif;margin:0;margin-right:auto}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:none;border:0;color:#b9c6d4;padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}
+nav button.on{background:var(--ac);color:#fff}
+main{max-width:1050px;margin:0 auto;padding:20px}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.bar h2{margin:0 auto 0 0;font:600 22px Newsreader,serif}
+button.b,a.b{background:var(--ac);color:#fff;border:0;border-radius:6px;padding:8px 14px;cursor:pointer;font:500 14px Manrope;text-decoration:none}
+button.g{background:#fff;color:var(--ink);border:1px solid var(--line)}
+button.s{padding:4px 9px;font-size:13px}
+button.d{color:var(--bad)}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;width:100%;background:#fff;color:var(--ink)}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+.bar input{width:auto}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--card);border-radius:8px;padding:14px 16px;border-left:4px solid var(--ac)}
+.stat small{color:var(--mut)}.stat b{display:block;font:600 24px Newsreader,serif}
+.stat.ok{border-color:var(--ok)}.stat.w{border-color:var(--warn)}.stat.r{border-color:var(--bad)}
+.tw{background:var(--card);border-radius:8px;overflow-x:auto;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:13px;color:var(--mut);font-weight:500}
+td.a{white-space:nowrap;text-align:right}td.a button{margin-left:4px}
+.tag{padding:2px 9px;border-radius:99px;font-size:12.5px;font-weight:700}
+.t-ok{background:#dff0e4;color:var(--ok)}.t-w{background:#f7ebd3;color:var(--warn)}.t-r{background:#f6dcd8;color:var(--bad)}.t-n{background:#e6eaef;color:var(--mut)}
+.empty{padding:28px;text-align:center;color:var(--mut)}
+h3{font:600 18px Newsreader,serif;margin:0 0 10px}
+dialog{border:0;border-radius:10px;padding:22px;width:min(520px,94vw);box-shadow:0 10px 40px #0004}
+dialog::backdrop{background:#0007}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:12px}.fg .full{grid-column:1/-1}
+.fg label{font-size:13px;color:var(--mut);display:block;margin-bottom:3px}
+.acts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+#login{max-width:340px;margin:12vh auto;background:#fff;padding:26px;border-radius:10px}
+#login input{margin-bottom:10px}
+#err{color:var(--bad);font-size:14px;min-height:20px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;display:none}
+/* recibo */
+dialog.rc{width:min(720px,96vw)}
+.recibo{font-family:Newsreader,serif;font-size:17px;line-height:1.7;border:2px solid var(--ink);padding:28px 32px}
+.recibo h2{text-align:center;margin:0 0 4px;font-size:30px;letter-spacing:.04em}
+.recibo .top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--ink);padding-bottom:8px;margin-bottom:16px}
+.recibo .top b{font-size:22px}
+.sign{margin-top:48px;text-align:center}.sign div{border-top:1px solid var(--ink);width:70%;margin:0 auto;padding-top:4px}
+@media print{body *{visibility:hidden}#rcBox,#rcBox *{visibility:visible}#rcBox{position:absolute;left:0;top:0;width:100%}dialog{box-shadow:none}}
+@media(max-width:560px){.fg{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="login" hidden>
+  <h3>Controle de Aluguel</h3>
+  <input id="em" type="email" placeholder="E-mail" autocomplete="username">
+  <input id="pw" type="password" placeholder="Senha" autocomplete="current-password">
+  <div id="err"></div>
+  <button class="b" style="width:100%" onclick="entrar()">Entrar</button>
+</div>
+
+<div id="app" hidden>
+<header>
+  <h1>Controle de Aluguel</h1>
+  <nav id="nav"></nav>
+  <button class="b g s" onclick="sair()">Sair</button>
+</header>
+<main id="main"></main>
+</div>
+
+<dialog id="dlg"></dialog>
+<div id="toast"></div>
+
+<script>
+/* ====== CONFIGURE AQUI (Supabase > Project Settings > API) ====== */
+const SUPABASE_URL = 'https://bwntsovvjgknzetkvfki.supabase.co/';
+const SUPABASE_KEY = 'sb_publishable_yp06oiJrqabwl5rDXniTVw_L56Q7iBi';
+/* ================================================================ */
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = s => document.querySelector(s);
+const S = {imoveis:[], inquilinos:[], pagamentos:[], tab:'painel', mes:new Date().toISOString().slice(0,7)};
+const hoje = () => new Date(Date.now() - new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const fd = d => d ? d.split('-').reverse().join('/') : '—';
+const brl = v => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const comp = d => { const [y,m] = d.split('-'); return `${MESES[+m-1]} de ${y}`; };
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2600)}
+
+/* ---- valor por extenso ---- */
+const U=['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+const DZ=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+const CT=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+function ate999(n){if(n===100)return 'cem';const p=[],c=Math.floor(n/100),r=n%100;if(c)p.push(CT[c]);if(r)p.push(r<20?U[r]:DZ[Math.floor(r/10)]+(r%10?' e '+U[r%10]:''));return p.join(' e ')}
+function extenso(v){const re=Math.floor(v),ce=Math.round((v-re)*100);let s='';
+  if(re){const mil=Math.floor(re/1000),rs=re%1000;if(mil)s+=mil===1?'mil':ate999(mil)+' mil';
+    if(rs)s+=(s?(rs<100||rs%100===0?' e ':' '):'')+ate999(rs);s+=re===1?' real':' reais'}
+  if(ce)s+=(s?' e ':'')+ate999(ce)+(ce===1?' centavo':' centavos');return s||'zero real'}
+
+/* ---- auth ---- */
+async function entrar(){
+  const {error}=await sb.auth.signInWithPassword({email:$('#em').value,password:$('#pw').value});
+  if(error){$('#err').textContent='E-mail ou senha incorretos.';return}
+  iniciar();
+}
+async function sair(){await sb.auth.signOut();location.reload()}
+async function iniciar(){
+  const {data:{session}}=await sb.auth.getSession();
+  $('#login').hidden=!!session;$('#app').hidden=!session;
+  if(!session)return;
+  await carregar();
+}
+async function carregar(){
+  const [a,b,c]=await Promise.all([
+    sb.from('imoveis').select('*').order('nome'),
+    sb.from('inquilinos').select('*').order('nome'),
+    sb.from('pagamentos').select('*').order('competencia',{ascending:false})]);
+  if(a.error||b.error||c.error){toast('Erro ao carregar dados. Rode o schema.sql no Supabase.');return}
+  S.imoveis=a.data;S.inquilinos=b.data;S.pagamentos=c.data;render();
+}
+
+/* ---- helpers de dados ---- */
+const inq = id => S.inquilinos.find(i=>i.id===id)||{};
+const imo = id => S.imoveis.find(i=>i.id===id)||{};
+function status(p){
+  if(p.data_pagamento)return ['Pago em '+fd(p.data_pagamento),'t-ok'];
+  const h=hoje();
+  if(p.vencimento<h){const dias=Math.round((new Date(h)-new Date(p.vencimento))/864e5);return [`Atrasado ${dias} d`,'t-r']}
+  return ['Em aberto','t-w'];
+}
+function venc(mes,dia){ // mes = 'YYYY-MM'
+  const [y,m]=mes.split('-').map(Number);const ult=new Date(y,m,0).getDate();
+  return `${mes}-${String(Math.min(dia,ult)).padStart(2,'0')}`;
+}
+
+/* ---- render ---- */
+const TABS={painel:'Painel',pagamentos:'Pagamentos',inquilinos:'Inquilinos',imoveis:'Imóveis'};
+function render(){
+  $('#nav').innerHTML=Object.entries(TABS).map(([k,v])=>`<button class="${S.tab===k?'on':''}" onclick="S.tab='${k}';render()">${v}</button>`).join('');
+  $('#main').innerHTML=({painel,pagamentos,inquilinos,imoveis})[S.tab]();
+}
+function mesInput(){return `<input type="month" value="${S.mes}" onchange="S.mes=this.value;render()" aria-label="Mês">`}
+
+function painel(){
+  const doMes=S.pagamentos.filter(p=>p.competencia.slice(0,7)===S.mes);
+  const sum=f=>doMes.filter(f).reduce((t,p)=>t+Number(p.valor),0);
+  const h=hoje();
+  const prev=sum(()=>true),rec=sum(p=>p.data_pagamento),atr=sum(p=>!p.data_pagamento&&p.vencimento<h),ab=sum(p=>!p.data_pagamento&&p.vencimento>=h);
+  const todosAtr=S.pagamentos.filter(p=>!p.data_pagamento&&p.vencimento<h);
+  const prox=S.pagamentos.filter(p=>!p.data_pagamento).sort((a,b)=>a.vencimento.localeCompare(b.vencimento)).slice(0,6);
+  const fins=S.inquilinos.filter(i=>i.ativo&&i.data_fim&&Math.round((new Date(i.data_fim)-new Date(h))/864e5)<=60);
+  return `<div class="bar"><h2>Painel</h2>${mesInput()}</div>
+  <div class="stats">
+    <div class="stat"><small>Previsto no mês</small><b>${brl(prev)}</b></div>
+    <div class="stat ok"><small>Recebido</small><b>${brl(rec)}</b></div>
+    <div class="stat w"><small>A vencer</small><b>${brl(ab)}</b></div>
+    <div class="stat r"><small>Atrasado (mês)</small><b>${brl(atr)}</b></div>
+  </div>
+  ${todosAtr.length?`<p class="tag t-r" style="display:inline-block">${todosAtr.length} cobrança(s) em atraso no total: ${brl(todosAtr.reduce((t,p)=>t+Number(p.valor),0))}</p>`:''}
+  <h3>Próximos vencimentos</h3>
+  <div class="tw">${prox.length?`<table><tr><th>Vencimento</th><th>Inquilino</th><th>Competência</th><th>Valor</th><th></th></tr>${prox.map(p=>{const [t,c]=status(p);return `<tr><td>${fd(p.vencimento)}</td><td>${esc(inq(p.inquilino_id).nome)}</td><td>${comp(p.competencia)}</td><td>${brl(p.valor)}</td><td class="a"><span class="tag ${c}">${t}</span> <button class="b s" onclick="receber('${p.id}')">Receber</button></td></tr>`}).join('')}</table>`:'<div class="empty">Nenhuma cobrança em aberto.</div>'}</div>
+  ${fins.length?`<h3>Contratos terminando em até 60 dias</h3><div class="tw"><table>${fins.map(i=>`<tr><td>${esc(i.nome)}</td><td>${esc(imo(i.imovel_id).nome)}</td><td>Fim: ${fd(i.data_fim)}</td></tr>`).join('')}</table></div>`:''}`;
+}
+
+function pagamentos(){
+  const lista=S.pagamentos.filter(p=>p.competencia.slice(0,7)===S.mes);
+  return `<div class="bar"><h2>Pagamentos</h2>${mesInput()}
+    <button class="b" onclick="gerarMes()">Gerar cobranças do mês</button>
+    <button class="b g" onclick="formPag()">Lançamento avulso</button></div>
+  <div class="tw">${lista.length?`<table><tr><th>Inquilino / imóvel</th><th>Vencimento</th><th>Valor</th><th>Situação</th><th></th></tr>${lista.map(p=>{const [t,c]=status(p),i=inq(p.inquilino_id);return `<tr>
+    <td>${esc(i.nome)}<br><small style="color:var(--mut)">${esc(imo(i.imovel_id).nome||'')}</small></td>
+    <td>${fd(p.vencimento)}</td><td>${brl(p.valor)}</td><td><span class="tag ${c}">${t}</span></td>
+    <td class="a">${p.data_pagamento?`<button class="b s" onclick="recibo('${p.id}')">Recibo</button><button class="b g s" onclick="desfazer('${p.id}')">Desfazer</button>`:`<button class="b s" onclick="receber('${p.id}')">Receber</button>`}
+    <button class="b g s d" onclick="excluir('pagamentos','${p.id}')">Excluir</button></td></tr>`}).join('')}</table>`:'<div class="empty">Sem cobranças neste mês. Use “Gerar cobranças do mês”.</div>'}</div>`;
+}
+
+function inquilinos(){
+  return `<div class="bar"><h2>Inquilinos</h2><button class="b" onclick="formInq()">Novo inquilino</button></div>
+  <div class="tw">${S.inquilinos.length?`<table><tr><th>Nome</th><th>Imóvel</th><th>Aluguel</th><th>Vence dia</th><th>Contrato</th><th></th></tr>${S.inquilinos.map(i=>`<tr>
+    <td>${esc(i.nome)}${i.ativo?'':' <span class="tag t-n">inativo</span>'}<br><small style="color:var(--mut)">${esc(i.telefone||i.email||'')}</small></td>
+    <td>${esc(imo(i.imovel_id).nome||'—')}</td><td>${brl(i.valor_aluguel)}</td><td>${i.dia_vencimento}</td>
+    <td>${fd(i.data_inicio)} a ${fd(i.data_fim)}</td>
+    <td class="a"><button class="b g s" onclick="formInq('${i.id}')">Editar</button><button class="b g s d" onclick="excluir('inquilinos','${i.id}')">Excluir</button></td></tr>`).join('')}</table>`:'<div class="empty">Cadastre o primeiro inquilino.</div>'}</div>`;
+}
+
+function imoveis(){
+  return `<div class="bar"><h2>Imóveis</h2><button class="b" onclick="formImo()">Novo imóvel</button></div>
+  <div class="tw">${S.imoveis.length?`<table><tr><th>Nome</th><th>Endereço</th><th>Proprietário</th><th></th></tr>${S.imoveis.map(i=>`<tr>
+    <td>${esc(i.nome)}</td><td>${esc(i.endereco)}${i.cidade?' – '+esc(i.cidade):''}</td><td>${esc(i.proprietario)}</td>
+    <td class="a"><button class="b g s" onclick="formImo('${i.id}')">Editar</button><button class="b g s d" onclick="excluir('imoveis','${i.id}')">Excluir</button></td></tr>`).join('')}</table>`:'<div class="empty">Cadastre o imóvel antes do inquilino.</div>'}</div>`;
+}
+
+/* ---- formulário genérico ---- */
+function abrir(titulo,campos,valores,salvar,extra=''){
+  const d=$('#dlg');d.className='';
+  d.innerHTML=`<h3>${titulo}</h3><div class="fg">${campos.map(c=>{
+    const v=valores[c.k]??c.def??'';let el;
+    if(c.opts)el=`<select name="${c.k}">${c.opts.map(([val,l])=>`<option value="${val}" ${String(val)===String(v)?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
+    else if(c.t==='area')el=`<textarea name="${c.k}" rows="2">${esc(v)}</textarea>`;
+    else el=`<input name="${c.k}" type="${c.t||'text'}" value="${esc(v)}" ${c.step?'step="'+c.step+'"':''} ${c.req?'required':''}>`;
+    return `<div class="${c.full?'full':''}"><label>${c.l}</label>${el}</div>`}).join('')}</div>
+    ${extra}<div class="acts"><button class="b g" onclick="$('#dlg').close()">Cancelar</button><button class="b" id="sv">Salvar</button></div>`;
+  d.showModal();
+  $('#sv').onclick=async()=>{
+    const o={};let ok=true;
+    d.querySelectorAll('[name]').forEach(e=>{o[e.name]=e.value===''?null:e.value;if(e.required&&!e.value){ok=false;e.style.borderColor='var(--bad)'}});
+    if(!ok){toast('Preencha os campos obrigatórios');return}
+    await salvar(o);d.close();await carregar();
+  };
+}
+const opsImo=()=>[['','— selecione —'],...S.imoveis.map(i=>[i.id,i.nome])];
+const opsInq=()=>S.inquilinos.filter(i=>i.ativo).map(i=>[i.id,i.nome]);
+async function gravar(tab,id,o){
+  const r=id?await sb.from(tab).update(o).eq('id',id):await sb.from(tab).insert(o);
+  if(r.error){toast('Erro: '+r.error.message);throw r.error}toast('Salvo');
+}
+function formImo(id){
+  const v=S.imoveis.find(i=>i.id===id)||{};
+  abrir(id?'Editar imóvel':'Novo imóvel',[
+    {k:'nome',l:'Nome (ex.: Apto 302)',req:1,full:1},{k:'endereco',l:'Endereço completo',req:1,full:1},
+    {k:'cidade',l:'Cidade/UF'},{k:'matricula',l:'Matrícula / inscrição'},
+    {k:'proprietario',l:'Proprietário (quem assina o recibo)',req:1},{k:'proprietario_doc',l:'CPF do proprietário'},
+    {k:'obs',l:'Observações',t:'area',full:1}],v,o=>gravar('imoveis',id,o));
+}
+function formInq(id){
+  const v=S.inquilinos.find(i=>i.id===id)||{ativo:true};
+  abrir(id?'Editar inquilino':'Novo inquilino',[
+    {k:'nome',l:'Nome completo',req:1,full:1},{k:'cpf',l:'CPF'},{k:'rg',l:'RG'},
+    {k:'telefone',l:'Telefone'},{k:'email',l:'E-mail',t:'email'},
+    {k:'imovel_id',l:'Imóvel',opts:opsImo()},{k:'valor_aluguel',l:'Valor do aluguel (R$)',t:'number',step:'0.01',req:1},
+    {k:'dia_vencimento',l:'Dia do vencimento',t:'number',req:1,def:5},{k:'caucao',l:'Caução / depósito (R$)',t:'number',step:'0.01'},
+    {k:'data_inicio',l:'Início do contrato',t:'date',req:1,def:hoje()},{k:'data_fim',l:'Fim do contrato',t:'date'},
+    {k:'ativo',l:'Situação',opts:[['true','Ativo'],['false','Inativo']]},
+    {k:'obs',l:'Observações',t:'area',full:1}],{...v,ativo:String(v.ativo)},
+    o=>gravar('inquilinos',id,{...o,ativo:o.ativo==='true'}));
+}
+function formPag(){
+  if(!S.inquilinos.length){toast('Cadastre um inquilino primeiro');return}
+  abrir('Lançamento avulso',[
+    {k:'inquilino_id',l:'Inquilino',opts:opsInq(),full:1},{k:'competencia',l:'Mês de referência',t:'month',def:S.mes,req:1},
+    {k:'vencimento',l:'Vencimento',t:'date',req:1,def:hoje()},{k:'valor',l:'Valor (R$)',t:'number',step:'0.01',req:1},
+    {k:'obs',l:'Observação',t:'area',full:1}],{},
+    o=>gravar('pagamentos',null,{...o,competencia:o.competencia+'-01'}));
+}
+
+/* ---- ações de pagamento ---- */
+async function gerarMes(){
+  const ativos=S.inquilinos.filter(i=>i.ativo&&i.data_inicio.slice(0,7)<=S.mes&&(!i.data_fim||i.data_fim.slice(0,7)>=S.mes));
+  const novos=ativos.filter(i=>!S.pagamentos.some(p=>p.inquilino_id===i.id&&p.competencia.slice(0,7)===S.mes))
+    .map(i=>({inquilino_id:i.id,competencia:S.mes+'-01',vencimento:venc(S.mes,i.dia_vencimento),valor:i.valor_aluguel}));
+  if(!novos.length){toast('Todas as cobranças deste mês já foram geradas');return}
+  const {error}=await sb.from('pagamentos').insert(novos);
+  if(error){toast('Erro: '+error.message);return}toast(novos.length+' cobrança(s) gerada(s)');carregar();
+}
+function receber(id){
+  const p=S.pagamentos.find(x=>x.id===id);
+  abrir('Registrar recebimento',[
+    {k:'data_pagamento',l:'Data do pagamento',t:'date',def:hoje(),req:1},{k:'valor',l:'Valor recebido (R$)',t:'number',step:'0.01',req:1},
+    {k:'forma',l:'Forma',opts:['PIX','Dinheiro','Transferência','Boleto','Outro'].map(x=>[x,x])},
+    {k:'obs',l:'Observação',t:'area',full:1}],{valor:p.valor},
+    async o=>{await gravar('pagamentos',id,o);setTimeout(()=>recibo(id),400)});
+}
+async function desfazer(id){if(!confirm('Marcar como não pago?'))return;await sb.from('pagamentos').update({data_pagamento:null,forma:null}).eq('id',id);carregar()}
+async function excluir(tab,id){if(!confirm('Excluir definitivamente? Cobranças ligadas também serão apagadas.'))return;const {error}=await sb.from(tab).delete().eq('id',id);if(error)toast(error.message);carregar()}
+
+/* ---- recibo ---- */
+async function recibo(id){
+  if(!S.pagamentos.find(x=>x.id===id&&x.data_pagamento)) await carregar();
+  const p=S.pagamentos.find(x=>x.id===id),i=inq(p.inquilino_id),m=imo(i.imovel_id);
+  const d=$('#dlg');d.className='rc';
+  const [y,mo,dd]=p.data_pagamento.split('-');
+  d.innerHTML=`<div id="rcBox"><div class="recibo">
+    <div class="top"><h2 style="margin:0">RECIBO</h2><span>Nº ${String(p.numero_recibo).padStart(5,'0')}</span></div>
+    <div class="top"><span>Valor</span><b>${brl(p.valor)}</b></div>
+    <p>Recebi de <b>${esc(i.nome)}</b>${i.cpf?`, CPF ${esc(i.cpf)}`:''}, a importância de <b>${extenso(Number(p.valor))}</b>, referente ao aluguel de <b>${comp(p.competencia)}</b>, do imóvel situado em ${esc(m.endereco||'—')}${m.cidade?', '+esc(m.cidade):''}${m.nome?' ('+esc(m.nome)+')':''}, com vencimento em ${fd(p.vencimento)}.</p>
+    <p>Pagamento efetuado em ${fd(p.data_pagamento)}${p.forma?' via '+esc(p.forma):''}. Dou plena e geral quitação do valor acima.</p>
+    <p style="text-align:right">${esc(m.cidade||'')}${m.cidade?', ':''}${+dd} de ${MESES[+mo-1]} de ${y}.</p>
+    <div class="sign"><div>${esc(m.proprietario||'Locador')}${m.proprietario_doc?'<br>CPF '+esc(m.proprietario_doc):''}</div></div>
+  </div></div>
+  <div class="acts"><button class="b g" onclick="$('#dlg').close()">Fechar</button><button class="b" onclick="window.print()">Imprimir / salvar PDF</button></div>`;
+  d.showModal();
+}
+
+sb.auth.onAuthStateChange(()=>{});
+iniciar();
+</script>
+</body>
+</html>
