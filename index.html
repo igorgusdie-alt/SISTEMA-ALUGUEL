@@ -53,7 +53,13 @@ dialog.rc{width:min(720px,96vw)}
 .recibo h2{text-align:center;margin:0 0 22px;font-size:24px;letter-spacing:.02em}
 .recibo p{margin:0 0 14px;text-align:justify}
 .recibo .ass{margin-top:46px}
-@media print{body *{visibility:hidden}#rcBox,#rcBox *{visibility:visible}#rcBox{position:absolute;left:0;top:0;width:100%}dialog{box-shadow:none}}
+@page{margin:18mm}
+@media print{
+  body{background:#fff}
+  #app,#login,#toast,.acts{display:none!important}
+  dialog{position:static!important;inset:auto!important;transform:none!important;width:100%!important;max-width:none!important;height:auto!important;max-height:none!important;overflow:visible!important;margin:0!important;padding:0!important;box-shadow:none!important;border:0!important;background:#fff}
+  .recibo{padding:0}
+}
 @media(max-width:560px){.fg{grid-template-columns:1fr}}
 </style>
 </head>
